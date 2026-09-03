@@ -46,8 +46,21 @@ for i in $(seq 1 45); do
     cat /tmp/ztorrent-health.json
     echo
     echo "Ztorrent is running on private port 8080."
-    echo "Open the Codespaces PORTS tab and open port 8080."
-    echo "Keep visibility PRIVATE. The root URL now opens the Ztorrent interface; /health shows backend status."
+
+    if [ -n "${CODESPACE_NAME:-}" ] && [ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]; then
+      APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+      echo
+      echo "PRIVATE APP URL:"
+      echo "  ${APP_URL}/"
+      echo "HEALTH CHECK:"
+      echo "  ${APP_URL}/health"
+    else
+      echo "Open the Codespaces PORTS tab and open port 8080."
+    fi
+
+    echo
+    echo "Keep port 8080 visibility PRIVATE."
+    echo "The root URL opens the Ztorrent interface; /health shows backend status."
     exit 0
   fi
   sleep 1
