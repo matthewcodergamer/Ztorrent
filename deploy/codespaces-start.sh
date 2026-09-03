@@ -36,17 +36,21 @@ else
   echo "Using existing .env."
 fi
 
-# Codespaces runs Docker on containerized/dev storage. falloc can abort a job
-# before the first byte if the backing filesystem cannot preallocate the full
-# file. Use no preallocation here so transfers start immediately and space is
-# consumed only as bytes arrive.
+# Codespaces runs Docker on containerized/dev storage. Avoid full-file
+# preallocation and repair ownership on the persistent aria2 volumes before
+# starting the downloader. aria2 error code 16 means it could not create or
+# truncate its output file.
 if grep -q '^ARIA2_FILE_ALLOCATION=' .env; then
   sed -i 's/^ARIA2_FILE_ALLOCATION=.*/ARIA2_FILE_ALLOCATION=none/' .env
 else
   printf '\nARIA2_FILE_ALLOCATION=none\n' >> .env
 fi
 
+echo "Repairing aria2 download/config volume ownership..."
+docker compose run --rm storage-init
+
 echo "Codespaces storage mode: ARIA2_FILE_ALLOCATION=none"
+echo "aria2 filesystem identity: PUID=65534 PGID=65534"
 echo "HTTP compatibility mode: signed/session URLs use conservative single-stream transport; normal direct URLs keep the configured parallel profile."
 echo "Starting Ztorrent private app + API + aria2 + telemetry..."
 docker compose up -d --build
@@ -81,8 +85,15 @@ for i in $(seq 1 60); do
 
     grep -q '^ARIA2_FILE_ALLOCATION=none$' .env
 
+    if ! docker compose exec -T --user 65534:65534 aria2 sh -c 'touch /downloads/.ztorrent-write-test && rm -f /downloads/.ztorrent-write-test'; then
+      echo "STORAGE WRITE TEST FAILED: aria2 still cannot create files in /downloads."
+      echo "Run: docker compose logs --tail=100 storage-init aria2"
+      exit 1
+    fi
+
     echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze + speed telemetry are working."
     echo "STORAGE PASS: Codespaces no-preallocation mode is active."
+    echo "STORAGE WRITE PASS: the actual aria2 user can create files in /downloads."
     echo "COMPATIBILITY PASS: signed/session HTTP URLs use conservative transport and aria2 error codes are exposed."
     echo
     echo "Ztorrent is running on private port 8080."
@@ -91,7 +102,7 @@ for i in $(seq 1 60); do
       APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
       echo
       echo "PRIVATE APP URL:"
-      echo "  ${APP_URL}/?v=8"
+      echo "  ${APP_URL}/?v=9"
       echo "HEALTH CHECK:"
       echo "  ${APP_URL}/health"
     else
@@ -100,7 +111,7 @@ for i in $(seq 1 60); do
 
     echo
     echo "Keep port 8080 visibility PRIVATE."
-    echo "The live job shows regular one-connection speed, live engine speed, gain, transferred bytes, ETA and any aria2 error code."
+    echo "If aria2 ever reports code 16 again, the startup write test will fail before you try a download."
     exit 0
   fi
   sleep 1
@@ -108,5 +119,5 @@ done
 
 echo "The containers started, but Ztorrent did not become ready in 60 seconds."
 echo "Run: docker compose ps"
-echo "Then: docker compose logs --tail=100 gateway api aria2 telemetry"
+echo "Then: docker compose logs --tail=100 storage-init gateway api aria2 telemetry"
 exit 1
