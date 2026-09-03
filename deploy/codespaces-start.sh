@@ -45,6 +45,16 @@ for i in $(seq 1 45); do
     echo
     cat /tmp/ztorrent-health.json
     echo
+
+    echo "Running Ztorrent self-test..."
+    curl -fsS http://127.0.0.1:8080/ | grep -q 'id="gatewayForm"'
+    curl -fsS \
+      -H 'content-type: application/json' \
+      -d '{"source":"magnet:?xt=urn:btih:0123456789012345678901234567890123456789&dn=Ztorrent%20self-test"}' \
+      http://127.0.0.1:8080/v1/analyze >/tmp/ztorrent-analyze.json
+    grep -q '"type":"magnet"' /tmp/ztorrent-analyze.json
+    echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze are working."
+    echo
     echo "Ztorrent is running on private port 8080."
 
     if [ -n "${CODESPACE_NAME:-}" ] && [ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]; then
