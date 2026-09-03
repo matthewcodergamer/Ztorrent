@@ -24,7 +24,7 @@ ARIA2_SPLIT=16
 ARIA2_MIN_SPLIT_SIZE=1M
 ARIA2_BT_MAX_PEERS=200
 ARIA2_DISK_CACHE=512M
-ARIA2_FILE_ALLOCATION=falloc
+ARIA2_FILE_ALLOCATION=none
 ARIA2_MAX_CONCURRENT_DOWNLOADS=8
 ARIA2_MAX_OVERALL_UPLOAD_LIMIT=2M
 ARIA2_BT_UPLOAD_LIMIT=2M
@@ -36,6 +36,17 @@ else
   echo "Using existing .env."
 fi
 
+# Codespaces runs Docker on containerized/dev storage. falloc can abort a job
+# before the first byte if the backing filesystem cannot preallocate the full
+# file. Use no preallocation here so transfers start immediately and space is
+# consumed only as bytes arrive.
+if grep -q '^ARIA2_FILE_ALLOCATION=' .env; then
+  sed -i 's/^ARIA2_FILE_ALLOCATION=.*/ARIA2_FILE_ALLOCATION=none/' .env
+else
+  printf '\nARIA2_FILE_ALLOCATION=none\n' >> .env
+fi
+
+echo "Codespaces storage mode: ARIA2_FILE_ALLOCATION=none"
 echo "Starting Ztorrent private app + API + aria2 + telemetry..."
 docker compose up -d --build
 
@@ -67,7 +78,10 @@ for i in $(seq 1 60); do
       exit 1
     fi
 
+    grep -q '^ARIA2_FILE_ALLOCATION=none$' .env
+
     echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze + speed telemetry are working."
+    echo "STORAGE PASS: Codespaces no-preallocation mode is active."
     echo
     echo "Ztorrent is running on private port 8080."
 
@@ -75,7 +89,7 @@ for i in $(seq 1 60); do
       APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
       echo
       echo "PRIVATE APP URL:"
-      echo "  ${APP_URL}/?v=6"
+      echo "  ${APP_URL}/?v=7"
       echo "HEALTH CHECK:"
       echo "  ${APP_URL}/health"
     else
