@@ -162,6 +162,7 @@
     if (b.ok && Number(b.bps) > 0) {
       diagSet("baseline", "Regular speed · 1 connection", prettySpeed(b.bps), "ok");
       diagSet("baseline-sample", "Baseline sample", `${prettyBytes(b.bytes || 0)} in ${Math.max(1, Math.round((b.elapsed_ms || 0) / 100) / 10)}s`, "ok");
+      diagSet("baseline-reachability", "Backend reachability", "Source delivered bytes successfully", "ok");
     } else {
       diagSet("baseline", "Regular speed · 1 connection", "Could not measure", "warn");
       if (b.http_status) diagSet("baseline-http", "Baseline HTTP status", String(b.http_status), "bad");
@@ -235,6 +236,7 @@
       diag("HTTP connections", `${p.http_connections} per server`, "ok");
       diag("aria2 split", `${p.split} pieces / ${p.min_split_size} minimum`, "ok");
       diag("Torrent peer ceiling", p.bt_max_peers, "ok");
+      if (p.file_allocation) diag("File allocation", p.file_allocation, p.file_allocation === "none" ? "ok" : "warn");
     }
     if (Array.isArray(a.candidates)) {
       diag("Download links found", String(a.candidates.length), a.candidates.length ? "ok" : "warn");
@@ -292,11 +294,14 @@
       }
 
       if (j.status === "active" && speed <= 0 && done <= 0 && elapsedSec >= 8) {
+        const baselineSucceeded = currentBaseline?.ok && Number(currentBaseline.bps) > 0;
         const signed = currentBaseline?.signed_like || looksSigned(currentSource);
-        const hint = currentBaseline?.hint || (signed
-          ? "No file bytes are arriving. This signed/session URL may be valid only for the original browser/account/IP and may not be portable to Codespaces."
-          : "No file bytes are arriving from the source. The remote server may be stalled, rejecting the request, or waiting before sending data.");
-        diagSet("stall", "Stall diagnosis", hint, signed ? "bad" : "warn");
+        const hint = baselineSucceeded
+          ? `The source delivered a one-connection baseline at ${prettySpeed(currentBaseline.bps)}, but aria2 has not received bytes yet. The source may dislike parallel requests or the engine may still be negotiating.`
+          : (currentBaseline?.hint || (signed
+            ? "No file bytes are arriving. This signed/session URL may be valid only for the original browser/account/IP and may not be portable to Codespaces."
+            : "No file bytes are arriving from the source. The remote server may be stalled, rejecting the request, or waiting before sending data."));
+        diagSet("stall", "Stall diagnosis", hint, baselineSucceeded ? "warn" : (signed ? "bad" : "warn"));
       }
 
       if (j.status === "complete") {
@@ -319,10 +324,22 @@
         ui.jobTitle.textContent = "Download stopped";
         clearInterval(pollTimer);
         pollTimer = null;
+        ui.pause.hidden = ui.resume.hidden = ui.cancel.hidden = true;
+        ui.sourceSpeedHint.textContent = "aria2 stopped before the transfer completed";
         diagSet("engine-error", "Engine", j.error_message || "Download failed", "bad");
+        if (j.error_code) diagSet("engine-code", "aria2 error code", String(j.error_code), "bad");
+
+        const baselineSucceeded = currentBaseline?.ok && Number(currentBaseline.bps) > 0;
         const signed = currentBaseline?.signed_like || looksSigned(currentSource);
-        if (signed) {
-          diagSet("source-diagnosis", "Source diagnosis", currentBaseline?.hint || "This looks like a signed/session URL. A link issued to Safari can be rejected when reused from a different machine/IP such as Codespaces.", "bad");
+        if (baselineSucceeded) {
+          diagSet("source-diagnosis", "Source diagnosis", `The backend successfully received baseline bytes at ${prettySpeed(currentBaseline.bps)}. The failure is inside the aria2 transfer path, not basic source reachability. Codespaces now uses no-preallocation mode; retry after rebuilding.`, "warn");
+        } else if (signed) {
+          const signedHint = currentBaseline && !currentBaseline.ok && currentBaseline.hint
+            ? currentBaseline.hint
+            : "This looks like a signed/session URL. A link issued to one browser/session can be rejected when reused from a different machine/IP such as Codespaces.";
+          diagSet("source-diagnosis", "Source diagnosis", signedHint, "bad");
+        } else if (currentBaseline?.hint) {
+          diagSet("source-diagnosis", "Source diagnosis", currentBaseline.hint, "warn");
         }
       } else {
         state(j.status || "Downloading");
@@ -405,6 +422,6 @@
   window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; ui.install.hidden = false; });
   ui.install.addEventListener("click", async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; ui.install.hidden = true; });
 
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=4").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=5").catch(() => {});
   checkBackend(false);
 })();
