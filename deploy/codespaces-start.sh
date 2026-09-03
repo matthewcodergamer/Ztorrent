@@ -36,24 +36,27 @@ else
   echo "Using existing .env."
 fi
 
-echo "Starting Ztorrent private app + API + aria2..."
+echo "Starting Ztorrent private app + API + aria2 + telemetry..."
 docker compose up -d --build
 
 echo "Waiting for Ztorrent..."
-for i in $(seq 1 45); do
+for i in $(seq 1 60); do
   if curl -fsS http://127.0.0.1:8080/health >/tmp/ztorrent-health.json 2>/dev/null; then
     echo
     cat /tmp/ztorrent-health.json
     echo
 
     echo "Running Ztorrent self-test..."
-    curl -fsS http://127.0.0.1:8080/ | grep -q 'id="gatewayForm"'
+    curl -fsS http://127.0.0.1:8080/ >/tmp/ztorrent-index.html
+    grep -q 'id="gatewayForm"' /tmp/ztorrent-index.html
+    grep -q 'telemetry.js' /tmp/ztorrent-index.html
+    docker compose ps --status running telemetry | grep -q telemetry
     curl -fsS \
       -H 'content-type: application/json' \
       -d '{"source":"magnet:?xt=urn:btih:0123456789012345678901234567890123456789&dn=Ztorrent%20self-test"}' \
       http://127.0.0.1:8080/v1/analyze >/tmp/ztorrent-analyze.json
     grep -q '"type":"magnet"' /tmp/ztorrent-analyze.json
-    echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze are working."
+    echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze + speed telemetry are working."
     echo
     echo "Ztorrent is running on private port 8080."
 
@@ -61,7 +64,7 @@ for i in $(seq 1 45); do
       APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
       echo
       echo "PRIVATE APP URL:"
-      echo "  ${APP_URL}/"
+      echo "  ${APP_URL}/?v=5"
       echo "HEALTH CHECK:"
       echo "  ${APP_URL}/health"
     else
@@ -70,13 +73,13 @@ for i in $(seq 1 45); do
 
     echo
     echo "Keep port 8080 visibility PRIVATE."
-    echo "The root URL opens the Ztorrent interface; /health shows backend status."
+    echo "The root URL opens Ztorrent; the live job now shows baseline speed, accelerated speed, gain, bytes downloaded, ETA and stall diagnosis."
     exit 0
   fi
   sleep 1
 done
 
-echo "The containers started, but Ztorrent did not become ready in 45 seconds."
+echo "The containers started, but Ztorrent did not become ready in 60 seconds."
 echo "Run: docker compose ps"
-echo "Then: docker compose logs --tail=100 gateway api aria2"
+echo "Then: docker compose logs --tail=100 gateway api aria2 telemetry"
 exit 1
