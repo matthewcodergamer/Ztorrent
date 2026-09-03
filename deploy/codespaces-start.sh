@@ -47,6 +47,7 @@ else
 fi
 
 echo "Codespaces storage mode: ARIA2_FILE_ALLOCATION=none"
+echo "HTTP compatibility mode: signed/session URLs use conservative single-stream transport; normal direct URLs keep the configured parallel profile."
 echo "Starting Ztorrent private app + API + aria2 + telemetry..."
 docker compose up -d --build
 
@@ -82,6 +83,7 @@ for i in $(seq 1 60); do
 
     echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze + speed telemetry are working."
     echo "STORAGE PASS: Codespaces no-preallocation mode is active."
+    echo "COMPATIBILITY PASS: signed/session HTTP URLs use conservative transport and aria2 error codes are exposed."
     echo
     echo "Ztorrent is running on private port 8080."
 
@@ -89,7 +91,7 @@ for i in $(seq 1 60); do
       APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
       echo
       echo "PRIVATE APP URL:"
-      echo "  ${APP_URL}/?v=7"
+      echo "  ${APP_URL}/?v=8"
       echo "HEALTH CHECK:"
       echo "  ${APP_URL}/health"
     else
@@ -98,7 +100,7 @@ for i in $(seq 1 60); do
 
     echo
     echo "Keep port 8080 visibility PRIVATE."
-    echo "The live job shows regular one-connection speed, accelerated live speed, gain, transferred bytes, ETA, and stall/session-link diagnosis."
+    echo "The live job shows regular one-connection speed, live engine speed, gain, transferred bytes, ETA and any aria2 error code."
     exit 0
   fi
   sleep 1
