@@ -7,9 +7,9 @@
   <meta name="description" content="Ztorrent — a backend-powered universal download gateway for authorized HTTP, magnet and torrent downloads.">
   <title>Ztorrent — Universal Download Gateway</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css">
-  <script src="./config.js" defer></script>
-  <script src="./app.js" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=0.3.1">
+  <script src="./config.js?v=0.3.1" defer></script>
+  <script src="./app.js?v=0.3.1" defer></script>
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -39,7 +39,7 @@
           <button type="button" class="paste-button" id="pasteButton">Paste</button>
         </div>
         <div class="gateway-actions">
-          <button class="primary-button" id="analyzeButton" type="submit" disabled><span>Analyze &amp; accelerate</span><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+          <button class="primary-button" id="analyzeButton" type="submit"><span>Analyze &amp; accelerate</span><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           <button class="secondary-button" id="clearButton" type="button">Clear</button>
         </div>
         <p class="legal-note">The accelerator backend is required. Ztorrent does not bypass logins, DRM, paywalls or explicit provider rate limits.</p>
@@ -83,11 +83,11 @@
     </section>
 
     <section class="mode-explainer">
-      <article><span class="status-dot hot"></span><div><span class="kicker">REQUIRED</span><h3>Accelerator backend</h3><p>Ztorrent v0.2 deliberately has no browser-only download fallback. If the Go + aria2 service is offline, downloads stay disabled.</p></div></article>
+      <article><span class="status-dot hot"></span><div><span class="kicker">REQUIRED</span><h3>Accelerator backend</h3><p>Ztorrent v0.3 deliberately has no browser-only download fallback. If the Go + aria2 service is offline, the button reports the failure instead of silently doing nothing.</p></div></article>
       <article><span class="status-dot"></span><div><span class="kicker">MAX SPEED PROFILE</span><h3>16 HTTP connections + 200 torrent peers</h3><p>Our own aria2 download limits are disabled. The real ceiling is the source, swarm, server network, storage and your device link.</p></div></article>
     </section>
   </main>
-  <footer><span>Ztorrent <b>v0.2</b></span><span>Built for transparent, authorized downloads.</span></footer>
+  <footer><span>Ztorrent <b>v0.3.1</b></span><span>Built for transparent, authorized downloads.</span></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
