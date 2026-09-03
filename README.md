@@ -1,83 +1,84 @@
-# Ztorrent
+# Ztorrent v0.2
 
-**Ztorrent is a universal download gateway for authorized downloads.**
+Ztorrent is a backend-powered universal download gateway for **authorized downloads**.
 
-Paste an HTTP(S) URL, magnet link, `.torrent`, or Metalink source. The frontend identifies the source and chooses the strongest available download path.
+Paste a direct HTTP(S) URL, normal webpage, magnet, `.torrent`, or Metalink. The backend resolves the source, extracts likely direct-download links from webpages, probes candidates, chooses the strongest sampled path, and sends the transfer through a tuned aria2 engine.
 
-## Live architecture
+## Important change in v0.2
+
+**The accelerator backend is no longer optional.**
+
+GitHub Pages is only the control panel. If the Go API + aria2 backend is not online, the download button stays disabled. Ztorrent no longer silently falls back to weaker browser-only downloading.
 
 ```text
 GitHub Pages UI
       |
-      | Browser Mode
-      |-- direct HTTP
-      |-- CORS-permitted HTTP range segmentation (small files)
-      `-- WebTorrent / WebRTC peers
-
+      v
+Ztorrent Go API
       |
-      `-- Accelerator Mode (configure API_BASE_URL)
-             |
-             v
-       Ztorrent Go API
-             |
-             v
-          aria2 RPC
-       /     |      \
-    HTTP  BitTorrent Metalink
-       \     |      /
-        shared cache
-             |
-       resumable HTTPS
-             |
-           device
+      +-- URL resolver
+      +-- webpage link extractor
+      +-- candidate probing / sampling
+      +-- SSRF protection
+      |
+      v
+aria2
+  +-- segmented HTTP/S
+  +-- BitTorrent / DHT / PEX
+  +-- Metalink mirrors
+      |
+      v
+persistent SSD/NVMe cache
+      |
+      v
+resumable HTTPS -> device
 ```
 
-GitHub Pages is intentionally only the control plane/static frontend. A static host cannot run aria2, open normal BitTorrent TCP/uTP connections, persist an NVMe cache, or safely assemble multi-gigabyte files server-side.
+## MAX SPEED defaults
 
-## What works on GitHub Pages by itself
+- HTTP connections per server: **16**
+- Split pieces: **16**
+- Minimum split size: **1 MiB**
+- aria2 download limit: **unlimited**
+- Torrent peer ceiling: **200**
+- Disk cache: **512 MiB**
+- Concurrent backend jobs: **8**
+- HTTP keep-alive + pipelining: enabled
+- DHT + peer exchange + local peer discovery: enabled
+- Retry wait: 1 second
+- Source probe/link extraction: automatic
 
-- URL/magnet classification.
-- HTTP capability probing when the remote host permits CORS.
-- Direct HTTP download fallback.
-- Parallel HTTP `Range` downloads for CORS-enabled files up to the configured browser assembly limit (256 MiB by default).
-- Browser BitTorrent through WebTorrent/WebRTC-compatible peers.
-- PWA shell/offline loading.
-- Honest diagnostics when browser security or the source prevents acceleration.
+`max-connection-per-server=16` is aria2's maximum value. Ztorrent cannot force a provider to send faster than the provider, CDN, torrent swarm, server network, disk, or user connection can actually supply. It also does not bypass provider-enforced rate limits.
 
-Large downloads should use Accelerator Mode rather than assembling multi-gigabyte `Blob`s in mobile Safari.
+## Webpage link extraction
 
-## Accelerator backend
+When the pasted source resolves to HTML, Ztorrent automatically:
 
-The included Go service talks to aria2 over JSON-RPC and provides:
+1. reads up to 4 MiB of the page,
+2. finds likely direct-download links,
+3. resolves relative URLs,
+4. rejects local/private network targets,
+5. probes up to 40 candidates,
+6. briefly samples candidate throughput,
+7. ranks the results,
+8. automatically selects the strongest candidate.
 
-- HTTP(S) segmented downloading.
-- Magnet/torrent support through the normal server-side BitTorrent engine.
-- Metalink support.
-- Pause/resume/cancel.
-- Download progress and throughput.
-- Safe single-file HTTPS delivery with byte-range/resume support.
-- SSRF protection that rejects localhost/private/special network targets.
-- No login, DRM, paywall, or provider-rate-limit bypass logic.
+No separate "extract links" mode is required.
 
-### Run locally / on a VPS
+## Backend setup
+
+See [`BACKEND_SETUP.md`](./BACKEND_SETUP.md).
+
+Quick start:
 
 ```bash
 cp .env.example .env
-# edit ARIA2_RPC_SECRET
+# set a long random ARIA2_RPC_SECRET
 docker compose up -d --build
+curl http://127.0.0.1:8080/health
 ```
 
-Then set `API_BASE_URL` in `config.js`:
-
-```js
-window.ZTORRENT_CONFIG = {
-  API_BASE_URL: "https://your-api-host.example",
-  MAX_BROWSER_ASSEMBLY_BYTES: 256 * 1024 * 1024,
-  POLL_INTERVAL_MS: 1000
-};
-```
-
-For production, put the API behind HTTPS (Caddy, Nginx, Cloudflare Tunnel, a cloud load balancer, etc.) and keep aria2 RPC private inside the container network.
+Then put the API behind HTTPS and set `API_BASE_URL` in `config.js`.
 
 ## API
 
@@ -92,34 +93,14 @@ POST /v1/jobs/{gid}/cancel
 GET  /v1/jobs/{gid}/file
 ```
 
-Create job body:
-
-```json
-{"source":"https://example.org/linux.iso"}
-```
-
-or:
-
-```json
-{"source":"magnet:?xt=urn:btih:..."}
-```
-
 ## GitHub Pages
 
-`.github/workflows/pages.yml` publishes the static frontend from `main`.
+The repository includes `.github/workflows/pages.yml`. Pushes to `main` redeploy the static control panel automatically.
 
-If Pages has never been enabled for this repository, open:
-
-**Repository Settings → Pages → Build and deployment → Source → GitHub Actions**
-
-Once enabled, pushes to `main` deploy automatically.
-
-Expected project URL:
+Expected Pages URL:
 
 `https://matthewcodergamer.github.io/Ztorrent/`
 
-## Security model
+## Security / scope
 
-“Paste anything” is dangerous if a backend blindly fetches arbitrary addresses. Ztorrent therefore rejects private/internal HTTP targets before probing or handing a URL to aria2. Production deployments should additionally add authentication/quotas, storage limits, malware scanning where appropriate, per-user job isolation, abuse controls, and automatic cache expiry.
-
-Ztorrent is for files you own or are authorized to retrieve. It does not provide mechanisms to circumvent authentication, DRM, paywalls, or explicit provider restrictions.
+Ztorrent blocks localhost/private/special-network HTTP targets and does not implement login bypasses, DRM circumvention, paywall bypasses, or explicit provider rate-limit evasion. Use it only for files you own or are authorized to retrieve.
