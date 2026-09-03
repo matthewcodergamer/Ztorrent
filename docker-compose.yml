@@ -1,0 +1,33 @@
+services:
+  aria2:
+    image: p3terx/aria2-pro:latest
+    restart: unless-stopped
+    environment:
+      RPC_SECRET: ${ARIA2_RPC_SECRET:?set ARIA2_RPC_SECRET}
+      RPC_PORT: 6800
+      LISTEN_PORT: 6888
+      DISK_CACHE: 128M
+      IPV6_MODE: "false"
+      UMASK_SET: "022"
+    volumes:
+      - ztorrent-downloads:/downloads
+      - aria2-config:/config
+    ports:
+      - "6888:6888"
+      - "6888:6888/udp"
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on: [aria2]
+    environment:
+      ARIA2_RPC_URL: http://aria2:6800/jsonrpc
+      ARIA2_RPC_SECRET: ${ARIA2_RPC_SECRET:?set ARIA2_RPC_SECRET}
+      DOWNLOAD_DIR: /downloads
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://matthewcodergamer.github.io}
+    volumes:
+      - ztorrent-downloads:/downloads
+    ports:
+      - "8080:8080"
+volumes:
+  ztorrent-downloads:
+  aria2-config:

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07110f">
+  <meta name="description" content="Ztorrent — a universal download gateway for authorized HTTP, magnet and torrent downloads.">
+  <title>Ztorrent — Universal Download Gateway</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/webtorrent@3.0.21/webtorrent.min.js" defer></script>
+  <script src="./config.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Ztorrent home">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="img"><path d="M16 3v16m0 0 6-6m-6 6-6-6M7 22.5V27h18v-4.5" /></svg></span>
+      <span><strong>Ztorrent</strong><small>Universal download gateway</small></span>
+    </a>
+    <div class="top-actions">
+      <span class="mode-pill" id="modePill"><i></i><span>Detecting mode</span></span>
+      <button class="icon-button" id="installButton" hidden aria-label="Install Ztorrent"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span></span> FASTEST LEGITIMATE PATH</div>
+      <h1>Paste it.<br><em>Ztorrent figures out the rest.</em></h1>
+      <p class="hero-copy">URLs, magnets and torrent files are analyzed automatically. Ztorrent tests the source, picks the best supported engine and shows exactly where the bottleneck is.</p>
+      <form class="gateway" id="gatewayForm">
+        <label for="sourceInput">Download source</label>
+        <div class="input-shell">
+          <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span>
+          <textarea id="sourceInput" rows="1" spellcheck="false" autocomplete="off" placeholder="Paste URL or magnet link…"></textarea>
+          <button type="button" class="paste-button" id="pasteButton">Paste</button>
+        </div>
+        <div class="gateway-actions">
+          <button class="primary-button" id="analyzeButton" type="submit"><span>Analyze &amp; accelerate</span><svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+          <button class="secondary-button" id="clearButton" type="button">Clear</button>
+        </div>
+        <p class="legal-note">For files you are authorized to download. Ztorrent does not bypass logins, DRM, paywalls or explicit provider rate limits.</p>
+      </form>
+      <div class="protocol-strip" aria-label="Supported source types"><span>HTTP/S</span><span>MAGNET</span><span>.TORRENT</span><span>METALINK</span><span>RANGE</span></div>
+    </section>
+
+    <section class="workspace" id="workspace" hidden>
+      <div class="section-heading"><div><span class="kicker">LIVE JOB</span><h2 id="jobTitle">Analyzing source</h2></div><span class="state-badge" id="stateBadge">ANALYZING</span></div>
+      <article class="job-card">
+        <div class="progress-header"><div><span id="jobType">AUTO DETECT</span><strong id="jobFilename">Resolving…</strong></div><strong class="progress-number" id="progressNumber">0%</strong></div>
+        <div class="progress-track"><div id="progressBar"></div></div>
+        <div class="metric-grid">
+          <div class="metric"><span>Source → engine</span><strong id="sourceSpeed">—</strong><small id="sourceSpeedHint">Waiting for source</small></div>
+          <div class="metric"><span>Engine → you</span><strong id="deliverySpeed">—</strong><small id="deliverySpeedHint">Not measured yet</small></div>
+          <div class="metric"><span>Connections / peers</span><strong id="connections">—</strong><small id="connectionsHint">Automatic</small></div>
+          <div class="metric"><span>Remaining</span><strong id="remaining">—</strong><small id="sizeHint">Size unknown</small></div>
+        </div>
+        <div class="diagnostic-list" id="diagnostics"></div>
+        <div class="job-actions" id="jobActions">
+          <button class="primary-button compact" id="downloadButton" type="button" hidden>Download file</button>
+          <button class="secondary-button compact" id="pauseButton" type="button" hidden>Pause</button>
+          <button class="secondary-button compact" id="resumeButton" type="button" hidden>Resume</button>
+          <button class="secondary-button compact danger" id="cancelButton" type="button" hidden>Cancel</button>
+        </div>
+      </article>
+      <div class="split-panel">
+        <article class="panel"><div class="panel-icon"><svg viewBox="0 0 24 24"><path d="M4 18V8m5 10V5m5 13v-8m5 8V3"/></svg></div><div><span class="kicker">ENGINE</span><h3 id="engineName">Automatic</h3><p id="engineDescription">Ztorrent will choose the strongest available transport.</p></div></article>
+        <article class="panel"><div class="panel-icon"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V7l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><span class="kicker">INTEGRITY</span><h3 id="integrityName">Protected</h3><p id="integrityDescription">ETag, byte ranges and torrent piece hashes are preserved where available.</p></div></article>
+      </div>
+    </section>
+
+    <section class="explainer">
+      <div class="section-heading"><div><span class="kicker">HOW IT WORKS</span><h2>One box. Different engines.</h2></div></div>
+      <div class="pipeline">
+        <article><span class="step">01</span><div class="pipeline-symbol">⌁</div><h3>Resolve</h3><p>Follow safe redirects, identify source type, filename, size and capabilities.</p></article><i>→</i>
+        <article><span class="step">02</span><div class="pipeline-symbol">≋</div><h3>Probe</h3><p>Test range support, source responsiveness, torrent metadata and peer availability.</p></article><i>→</i>
+        <article><span class="step">03</span><div class="pipeline-symbol">⚡</div><h3>Accelerate</h3><p>Use supported parallel ranges, BitTorrent pieces, mirrors and resumable delivery.</p></article><i>→</i>
+        <article><span class="step">04</span><div class="pipeline-symbol">↓</div><h3>Deliver</h3><p>Stream the completed or cached file through a normal HTTPS download to your device.</p></article>
+      </div>
+    </section>
+
+    <section class="mode-explainer">
+      <article><span class="status-dot"></span><div><span class="kicker">GITHUB PAGES</span><h3>Browser Mode</h3><p>Direct HTTP downloads plus WebTorrent/WebRTC when the browser can reach the source. Cross-origin restrictions still apply.</p></div></article>
+      <article><span class="status-dot hot"></span><div><span class="kicker">OPTIONAL SERVICE</span><h3>Accelerator Mode</h3><p>Connect the included backend for aria2, normal BitTorrent peers, adaptive range downloading, caching and resumable HTTPS delivery.</p></div></article>
+    </section>
+  </main>
+  <footer><span>Ztorrent <b>v0.1</b></span><span>Built for transparent, authorized downloads.</span></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "Ztorrent Universal Download Gateway",
+  "short_name": "Ztorrent",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07110f",
+  "theme_color": "#07110f",
+  "description": "Analyze and accelerate authorized HTTP and torrent downloads using the strongest supported path.",
+  "icons": []
+}
