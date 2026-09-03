@@ -37,6 +37,16 @@ services:
       ARIA2_BT_UPLOAD_LIMIT: ${ARIA2_BT_UPLOAD_LIMIT:-2M}
     volumes:
       - ztorrent-downloads:/downloads
+    expose:
+      - "8080"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/codespaces-gateway.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
     ports:
       - "8080:8080"
 
