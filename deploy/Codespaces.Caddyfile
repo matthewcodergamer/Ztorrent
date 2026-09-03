@@ -1,6 +1,10 @@
 :8080 {
   encode zstd gzip
 
+  @frontend path / /index.html /app.js /config.js /styles.css /sw.js /manifest.webmanifest
+  header @frontend Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header /sw.js Service-Worker-Allowed "/"
+
   handle /health {
     reverse_proxy api:8080
   }
