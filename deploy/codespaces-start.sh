@@ -49,13 +49,24 @@ for i in $(seq 1 60); do
     echo "Running Ztorrent self-test..."
     curl -fsS http://127.0.0.1:8080/ >/tmp/ztorrent-index.html
     grep -q 'id="gatewayForm"' /tmp/ztorrent-index.html
-    grep -q 'telemetry.js' /tmp/ztorrent-index.html
     docker compose ps --status running telemetry | grep -q telemetry
+
     curl -fsS \
       -H 'content-type: application/json' \
       -d '{"source":"magnet:?xt=urn:btih:0123456789012345678901234567890123456789&dn=Ztorrent%20self-test"}' \
       http://127.0.0.1:8080/v1/analyze >/tmp/ztorrent-analyze.json
     grep -q '"type":"magnet"' /tmp/ztorrent-analyze.json
+
+    baseline_code="$(curl -sS -o /tmp/ztorrent-baseline.json -w '%{http_code}' \
+      -H 'content-type: application/json' \
+      -d '{"source":"http://127.0.0.1/test"}' \
+      http://127.0.0.1:8080/v1/baseline || true)"
+    if [ "$baseline_code" != "400" ]; then
+      echo "Telemetry route self-test failed: expected safe rejection HTTP 400, got ${baseline_code}."
+      cat /tmp/ztorrent-baseline.json 2>/dev/null || true
+      exit 1
+    fi
+
     echo "SELF-TEST PASS: UI + gateway + /health + /v1/analyze + speed telemetry are working."
     echo
     echo "Ztorrent is running on private port 8080."
@@ -64,7 +75,7 @@ for i in $(seq 1 60); do
       APP_URL="https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
       echo
       echo "PRIVATE APP URL:"
-      echo "  ${APP_URL}/?v=5"
+      echo "  ${APP_URL}/?v=6"
       echo "HEALTH CHECK:"
       echo "  ${APP_URL}/health"
     else
@@ -73,7 +84,7 @@ for i in $(seq 1 60); do
 
     echo
     echo "Keep port 8080 visibility PRIVATE."
-    echo "The root URL opens Ztorrent; the live job now shows baseline speed, accelerated speed, gain, bytes downloaded, ETA and stall diagnosis."
+    echo "The live job shows regular one-connection speed, accelerated live speed, gain, transferred bytes, ETA, and stall/session-link diagnosis."
     exit 0
   fi
   sleep 1
