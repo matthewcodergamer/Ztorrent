@@ -1,3 +1,3 @@
-module github.com/matthewcodergamer/Ztorrent/backend
+module ztorrent/backend
 
 go 1.23
