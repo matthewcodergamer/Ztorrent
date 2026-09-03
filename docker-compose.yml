@@ -40,6 +40,12 @@ services:
     expose:
       - "8080"
 
+  telemetry:
+    build: ./telemetry
+    restart: unless-stopped
+    expose:
+      - "8090"
+
   gateway:
     build:
       context: .
@@ -47,6 +53,7 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+      - telemetry
     ports:
       - "8080:8080"
 
