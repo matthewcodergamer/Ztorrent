@@ -1,8 +1,27 @@
 services:
+  storage-init:
+    image: alpine:3.21
+    user: "0:0"
+    restart: "no"
+    command: >-
+      sh -c '
+        mkdir -p /downloads /config &&
+        chown -R 65534:65534 /downloads /config &&
+        chmod -R u+rwX,g+rwX,o+rX /downloads /config
+      '
+    volumes:
+      - ztorrent-downloads:/downloads
+      - aria2-config:/config
+
   aria2:
     image: p3terx/aria2-pro:latest
     restart: unless-stopped
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
     environment:
+      PUID: "65534"
+      PGID: "65534"
       RPC_SECRET: ${ARIA2_RPC_SECRET:?set ARIA2_RPC_SECRET}
       RPC_PORT: 6800
       LISTEN_PORT: 6888
