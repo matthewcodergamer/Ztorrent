@@ -36,24 +36,24 @@ else
   echo "Using existing .env."
 fi
 
-echo "Starting Ztorrent API + aria2..."
+echo "Starting Ztorrent private app + API + aria2..."
 docker compose up -d --build
 
-echo "Waiting for the API..."
-for i in $(seq 1 30); do
+echo "Waiting for Ztorrent..."
+for i in $(seq 1 45); do
   if curl -fsS http://127.0.0.1:8080/health >/tmp/ztorrent-health.json 2>/dev/null; then
     echo
     cat /tmp/ztorrent-health.json
     echo
-    echo "Ztorrent backend is running on port 8080."
-    echo "In Codespaces, open the PORTS tab and open/forward port 8080."
-    echo "Keep the forwarded port PRIVATE for personal use."
+    echo "Ztorrent is running on private port 8080."
+    echo "Open the Codespaces PORTS tab and open port 8080."
+    echo "Keep visibility PRIVATE. The root URL now opens the Ztorrent interface; /health shows backend status."
     exit 0
   fi
   sleep 1
 done
 
-echo "The containers started, but the health check did not become ready in 30 seconds."
+echo "The containers started, but Ztorrent did not become ready in 45 seconds."
 echo "Run: docker compose ps"
-echo "Then: docker compose logs --tail=100 api aria2"
+echo "Then: docker compose logs --tail=100 gateway api aria2"
 exit 1
