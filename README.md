@@ -67,18 +67,17 @@ No separate "extract links" mode is required.
 
 ## Backend setup
 
-See [`BACKEND_SETUP.md`](./BACKEND_SETUP.md).
-
-Quick start:
+The backend is **required**. For a zero-monthly-cost deployment, use Oracle Cloud Always Free with the included installer:
 
 ```bash
-cp .env.example .env
-# set a long random ARIA2_RPC_SECRET
-docker compose up -d --build
-curl http://127.0.0.1:8080/health
+git clone https://github.com/matthewcodergamer/Ztorrent.git
+cd Ztorrent
+sudo bash deploy/oci-free-install.sh
 ```
 
-Then put the API behind HTTPS and set `API_BASE_URL` in `config.js`.
+See [`deploy/README.md`](./deploy/README.md) for the Oracle firewall/VM steps and [`BACKEND_SETUP.md`](./BACKEND_SETUP.md) for generic VPS deployment. The installer configures Docker, aria2, the Go API, persistent storage, Caddy HTTPS, a free `sslip.io` hostname, and the MAX SPEED profile.
+
+After it prints the HTTPS backend URL, put that URL in `config.js`. The Pages UI stays locked until `/health` reports `aria2_ok: true`.
 
 ## API
 

@@ -2,9 +2,11 @@
 
 Ztorrent v0.2 requires the backend. GitHub Pages is only the control panel.
 
-## Recommended host
+## Free recommended host
 
-Use a Linux VPS or dedicated server with:
+For a zero-monthly-cost setup, use the included Oracle Cloud Always Free deployment in [`deploy/README.md`](./deploy/README.md). Oracle documents Always Free Ampere A1 compute and block storage; this is a much better fit for aria2 than free web-service platforms that sleep or use ephemeral disks.
+
+For any Linux VPS or dedicated server, use:
 
 - Docker + Docker Compose
 - public IPv4
@@ -124,3 +126,15 @@ Webpage URLs:
 - automatically chooses the highest-scoring candidate
 
 The backend never circumvents authentication, DRM, paywalls, or explicit provider rate restrictions.
+
+## One-command Oracle deployment
+
+After creating the Always Free Ubuntu VM and opening TCP 80/443/6888 plus UDP 443/6888 in the Oracle VCN/NSG:
+
+```bash
+git clone https://github.com/matthewcodergamer/Ztorrent.git
+cd Ztorrent
+sudo bash deploy/oci-free-install.sh
+```
+
+The script detects the VM public IPv4, creates a free `sslip.io` hostname, starts Caddy for automatic HTTPS, and prints the exact `API_BASE_URL` to put into `config.js`.

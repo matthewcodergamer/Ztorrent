@@ -1,0 +1,25 @@
+services:
+  aria2:
+    volumes:
+      - /opt/ztorrent/downloads:/downloads
+      - /opt/ztorrent/aria2:/config
+
+  api:
+    volumes:
+      - /opt/ztorrent/downloads:/downloads
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      ZTORRENT_DOMAIN: ${ZTORRENT_DOMAIN:?set ZTORRENT_DOMAIN}
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/ztorrent/caddy-data:/data
+      - /opt/ztorrent/caddy-config:/config
