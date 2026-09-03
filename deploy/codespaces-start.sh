@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is not available in this Codespace. Rebuild the Codespace with Docker support enabled."
+  exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker is installed but the daemon is not ready yet. Wait a few seconds and run this script again."
+  exit 1
+fi
+
+if [ ! -f .env ]; then
+  SECRET="$(openssl rand -hex 32)"
+  cat > .env <<EOF
+ARIA2_RPC_SECRET=${SECRET}
+FRONTEND_ORIGIN=https://matthewcodergamer.github.io
+ARIA2_HTTP_CONNECTIONS=16
+ARIA2_SPLIT=16
+ARIA2_MIN_SPLIT_SIZE=1M
+ARIA2_BT_MAX_PEERS=200
+ARIA2_DISK_CACHE=512M
+ARIA2_FILE_ALLOCATION=falloc
+ARIA2_MAX_CONCURRENT_DOWNLOADS=8
+ARIA2_MAX_OVERALL_UPLOAD_LIMIT=2M
+ARIA2_BT_UPLOAD_LIMIT=2M
+ARIA2_IPV6_MODE=false
+EOF
+  chmod 600 .env
+  echo "Created a private .env with a random aria2 RPC secret."
+else
+  echo "Using existing .env."
+fi
+
+echo "Starting Ztorrent API + aria2..."
+docker compose up -d --build
+
+echo "Waiting for the API..."
+for i in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:8080/health >/tmp/ztorrent-health.json 2>/dev/null; then
+    echo
+    cat /tmp/ztorrent-health.json
+    echo
+    echo "Ztorrent backend is running on port 8080."
+    echo "In Codespaces, open the PORTS tab and open/forward port 8080."
+    echo "Keep the forwarded port PRIVATE for personal use."
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "The containers started, but the health check did not become ready in 30 seconds."
+echo "Run: docker compose ps"
+echo "Then: docker compose logs --tail=100 api aria2"
+exit 1
