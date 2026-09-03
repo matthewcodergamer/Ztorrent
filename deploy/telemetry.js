@@ -78,7 +78,7 @@
 
   function updatePanel() {
     if (!ensurePanel()) return;
-    text("ztBaseline", state.baselineBps > 0 ? fmtSpeed(state.baselineBps) : state.baselineStatus, state.baselineBps > 0 ? "" : "zt-warn");
+    text("ztBaseline", state.baselineBps > 0 ? fmtSpeed(state.baselineBps) : state.baselineStatus, state.baselineBps > 0 ? "zt-good" : "zt-warn");
     text("ztBaselineHint", state.baselineHint);
 
     const j = state.job || {};
@@ -104,14 +104,36 @@
 
     const stall = document.getElementById("ztStall");
     if (!stall) return;
-    const active = String(j.status || "").toLowerCase() === "active";
+    const status = String(j.status || "").toLowerCase();
+    const active = status === "active";
+    const failed = status === "error" || status === "removed";
+
+    if (failed) {
+      let msg;
+      if (state.baselineBps > 0) {
+        msg = `The same backend successfully sampled this source at ${fmtSpeed(state.baselineBps)}, but aria2 stopped before receiving the file. That points to the aria2 transfer/storage path rather than basic network reachability. Codespaces now uses no-preallocation mode; rebuild and retry an authorized source.`;
+      } else if (state.signedLike) {
+        msg = "The source looks like a signed/session URL and the backend could not establish a usable transfer. It may be tied to another browser/session/IP or the remote site may reject automation.";
+      } else {
+        msg = `aria2 stopped before the transfer completed${j.error_message ? `: ${j.error_message}` : "."}`;
+      }
+      stall.textContent = msg;
+      stall.classList.add("show");
+      return;
+    }
+
     if (active && live <= 0) {
       if (!state.zeroSince) state.zeroSince = Date.now();
       const seconds = Math.floor((Date.now() - state.zeroSince) / 1000);
       if (seconds >= 8) {
-        let msg = `No file bytes have arrived for ${seconds}s. The backend is connected, but the remote source is not delivering data yet.`;
-        if (state.signedLike) msg += " This source looks like a signed/session URL; it may work only from the original Safari session/IP and not from the Codespaces server.";
-        else msg += " The source may be negotiating, temporarily stalled, limiting the server, or rejecting the backend request.";
+        let msg;
+        if (state.baselineBps > 0) {
+          msg = `The baseline reached ${fmtSpeed(state.baselineBps)}, but aria2 has received no bytes for ${seconds}s. The engine may be negotiating or the source may reject parallel requests.`;
+        } else {
+          msg = `No file bytes have arrived for ${seconds}s. The backend is connected, but the remote source is not delivering data yet.`;
+          if (state.signedLike) msg += " This source looks like a signed/session URL; it may work only from the original browser/session and not from the Codespaces server.";
+          else msg += " The source may be negotiating, temporarily stalled, limiting the server, or rejecting the backend request.";
+        }
         stall.textContent = msg;
         stall.classList.add("show");
       }
@@ -145,7 +167,7 @@
       } else {
         state.baselineBps = Number(b.bps);
         state.baselineStatus = fmtSpeed(b.bps);
-        state.baselineHint = `${b.range_supported ? "Range-capable" : "Single stream"} · ${Math.max(1, Number(b.elapsed_ms || 0))} ms sample`;
+        state.baselineHint = `${b.range_supported ? "Range-capable" : "Single stream"} · ${fmtBytes(b.bytes || 0)} sampled in ${Math.max(1, Number(b.elapsed_ms || 0))} ms`;
       }
     } catch (e) {
       state.baselineStatus = "Unavailable";
